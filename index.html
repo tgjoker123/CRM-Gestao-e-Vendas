@@ -418,35 +418,42 @@
             }
         }
 
-        // 3. Verificar clientes sumidos há mais de 1 mês
-        async function verificarAlertasInatividade() {
-            crmAlertsPanel.innerHTML = ''; 
-            const { data: clientes, error: errC } = await supabaseClient.from('clientes').select('*');
-            if (!clientes) return;
+        // 3. Verificar clientes sumidos há mais de 1 mês (CORRIGIDO)
+async function verificarAlertasInatividade() {
+    crmAlertsPanel.innerHTML = ''; 
+    
+    // Busca todos os clientes
+    const { data: clientes, error: errC } = await supabaseClient.from('clientes').select('*');
+    if (!clientes) return;
 
-            const umMesAtras = new Date();
-            umMesAtras.setMonth(umMesAtras.getMonth() - 1);
+    // Define exatamente a data limite de 30 dias atrás
+    const hoje = new Date();
+    const limiteInatividade = new Date();
+    limiteInatividade.setDate(hoje.getDate() - 30);
 
-            for (const cliente of clientes) {
-                const { data: ultVenda, error: errV } = await supabaseClient
-                    .from('vendas')
-                    .select('data_venda')
-                    .eq('cliente_id', cliente.id)
-                    .order('data_venda', { ascending: false })
-                    .limit(1);
+    for (const cliente of clientes) {
+        // Pega a última venda deste cliente específico
+        const { data: ultVenda, error: errV } = await supabaseClient
+            .from('vendas')
+            .select('data_venda')
+            .eq('cliente_id', cliente.id)
+            .order('data_venda', { ascending: false })
+            .limit(1);
 
-                if (ultVenda && ultVenda.length > 0) {
-                    const dataUltCompra = new Date(ultVenda[0].data_venda);
-                    if (dataUltCompra < umMesAtras) {
-                        const div = document.createElement('div');
-                        div.className = 'alert-box alert-inactive';
-                        div.innerHTML = `⚠️ <strong>Aviso de Ausência:</strong> O cliente <strong>${cliente.nome}</strong> (${cliente.celular}) não compra nada na loja há mais de 1 mês! Última vez: ${dataUltCompra.toLocaleDateString('pt-BR')}.`;
-                        crmAlertsPanel.appendChild(div);
-                    }
-                }
+        if (ultVenda && ultVenda.length > 0) {
+            // Transforma a data do banco em um objeto Date do JavaScript corretamente
+            const dataUltCompra = new Date(ultVenda[0].data_venda);
+            
+            // Se a última compra foi ANTES da nossa data limite, o cliente está sumido!
+            if (dataUltCompra < limiteInatividade) {
+                const div = document.createElement('div');
+                div.className = 'alert-box alert-inactive';
+                div.innerHTML = `⚠️ <strong>Aviso de Ausência:</strong> O cliente <strong>${cliente.nome}</strong> (${cliente.celular}) não compra nada na loja há mais de 1 mês! Última vez: ${dataUltCompra.toLocaleDateString('pt-BR')}.`;
+                crmAlertsPanel.appendChild(div);
             }
         }
-
+    }
+}
         // 4. Gerar Mini Relatório Mensal Dinâmico
         async function gerarRelatorioMensal() {
             const inicioMes = new Date();
