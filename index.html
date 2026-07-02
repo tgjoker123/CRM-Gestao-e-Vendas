@@ -27,7 +27,7 @@
         .filter-group label { font-size: 14px; font-weight: 600; color: #475569; }
         .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; }
 
-        /* Abas (Seções) */
+        /* Esconder abas inativas */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
@@ -73,7 +73,7 @@
         tr { border-bottom: 1px solid #f1f5f9; }
         .empty-row { text-align: center; color: #94a3b8; padding: 30px; }
 
-        /* Modais Básicos */
+        /* Modais */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -221,12 +221,10 @@
     </div>
 
     <script>
-        // CREDENCIAIS DO SEU SUPABASE
         const SUPABASE_URL = "https://shzqiiuwpsqhchzaqqqg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoenFpaXV3cHNxaGNoemFxcXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDY5NjgsImV4cCI6MjA5ODMyMjk2OH0.nXyw7hWTBj_1RVdMgFakHX5kROXPqxfnlpniyBbc8yA";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Mapeamentos DOM
         const filtroMes = document.getElementById('filtroMes');
         const pdvBuscaCliente = document.getElementById('pdvBuscaCliente');
         const pdvCamposCliente = document.getElementById('pdvCamposCliente');
@@ -236,37 +234,37 @@
         const crmAlertsPanel = document.getElementById('crmAlertsPanel');
         const vendasTableBody = document.getElementById('vendasTableBody');
 
-        // Cache local de dados
         let listaGeralClientes = [];
         let listaGeralVendas = [];
         let listaGeralPets = [];
         let clienteSelecionadoId = null;
         let diasPrevisaoParametro = 5;
 
-        // Alternância estruturada de Abas via Menu Lateral
+        // CORREÇÃO: Função para alternar e MOSTRAR as abas na tela
         function mudarAba(idAba) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Oculta todas as abas
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            // Remove classe active do menu anterior
             document.querySelectorAll('.sidebar ul li a').forEach(el => el.classList.remove('active'));
             
-            document.getElementById(`aba-${idAba}`).classList.add('active');
+            // Exibe a aba clicada
+            document.getElementById(`aba-${idAba}`).style.display = 'block';
+            // Marca o botão do menu como ativo
             document.getElementById(`menu-${idAba}`).classList.add('active');
             
             const titulos = { painel: "📊 Painel Geral", pdv: "🛒 PDV - Registrar Venda", relatorios: "📈 Histórico & Relatórios", config: "⚙️ Configurações CRM" };
             document.getElementById('page-title').innerText = titulos[idAba];
         }
 
-        // Função para simular a leitura Inteligente por Foto (OCR)
         function simularOCR() {
             const input = document.getElementById('pdvFotoCupom');
             if (input.files && input.files[0]) {
                 alert("✨ IA lendo cupom via OCR... Processando dados da imagem!");
-                // Simulando retorno do OCR da foto
                 document.getElementById('pdvProduto').value = "Ração Premier Cães Adultos 15kg (Identificado via Foto)";
                 document.getElementById('pdvValor').value = "189.90";
             }
         }
 
-        // Busca Inteligente de Cliente: Nome, CPF ou últimos dígitos do celular
         pdvBuscaCliente.addEventListener('input', () => {
             const termo = pdvBuscaCliente.value.trim().toLowerCase();
             if (termo.length < 2) {
@@ -275,7 +273,6 @@
                 return;
             }
 
-            // Procura na lista local de clientes já baixados do Supabase
             const localizado = listaGeralClientes.find(c => {
                 const porNome = c.nome?.toLowerCase().includes(termo);
                 const porCpf = c.cpf?.includes(termo);
@@ -286,7 +283,7 @@
             if (localizado) {
                 pdvCamposCliente.style.display = 'none';
                 clienteSelecionadoId = localizado.id;
-                pdvBuscaCliente.style.borderColor = "#22c55e"; // Borda verde se achar
+                pdvBuscaCliente.style.borderColor = "#22c55e";
             } else {
                 pdvCamposCliente.style.display = 'block';
                 clienteSelecionadoId = null;
@@ -296,12 +293,11 @@
 
         function salvarConfiguracoes() {
             diasPrevisaoParametro = parseInt(document.getElementById('configDiasAntecedencia').value) || 5;
-            alert("Parâmetros salvos! A IA recalculará os alertas com base no novo limite.");
+            alert("Parâmetros salvos! A IA recalculará os alertas.");
             processarDashboardERelatorios();
             mudarAba('painel');
         }
 
-        // Inicialização de Filtros temporais de Meses
         function inicializarFiltroMeses() {
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             const dataAtual = new Date();
@@ -319,7 +315,6 @@
 
         filtroMes.addEventListener('change', () => processarDashboardERelatorios());
 
-        // Renderização Dinâmica dos Pets no PDV
         pdvQtdPets.addEventListener('input', () => {
             const qtd = parseInt(pdvQtdPets.value) || 0;
             pdvContainerPets.innerHTML = '';
@@ -331,21 +326,18 @@
                     <div class="form-group"><label>Nome do Pet</label><input type="text" class="pet-nome" required></div>
                     <div class="form-group"><label>Tipo</label><select class="pet-tipo"><option value="Cachorro">Cachorro</option><option value="Gato">Gato</option></select></div>
                     <div class="form-group"><label>Porte</label><select class="pet-porte"><option value="Raça Pequena">Raça Pequena</option><option value="Raça Média">Raça Média</option><option value="Raça Grande">Raça Grande</option></select></div>
-                    <div class="form-group"><label>Data de Nascimento/Níver do Pet</label><input type="date" class="pet-aniv" required></div>
+                    <div class="form-group"><label>Data de Nascimento do Pet</label><input type="date" class="pet-aniv" required></div>
                 `;
                 pdvContainerPets.appendChild(div);
             }
         });
 
-        // Formulário PDV - Gravação e Fluxo de Confirmação
         vendaForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const prodVal = document.getElementById('pdvProduto').value.trim();
             const valorVal = parseFloat(document.getElementById('pdvValor').value);
-
             let idFinalCliente = clienteSelecionadoId;
 
-            // Se o cliente não existia, realiza o cadastro imediato
             if (!idFinalCliente) {
                 const nomeVal = document.getElementById('pdvNome').value.trim();
                 const cpfVal = document.getElementById('pdvCpf').value.trim();
@@ -359,7 +351,6 @@
                 if (errC) { alert("Erro ao criar cliente: " + errC.message); return; }
                 idFinalCliente = nCli.id;
 
-                // Processa pets vinculados
                 const petBlocos = pdvContainerPets.querySelectorAll('.pet-sub-form');
                 for (const bloco of petBlocos) {
                     await supabaseClient.from('pets').insert([{
@@ -372,7 +363,6 @@
                 }
             }
 
-            // Grava a venda vinculada
             const { error: errV } = await supabaseClient.from('vendas').insert([{
                 cliente_id: idFinalCliente, produto_comprado: prodVal, valor: valorVal, data_venda: new Date().toISOString()
             }]);
@@ -401,18 +391,15 @@
             processarDashboardERelatorios();
         }
 
-        // LÓGICA DA IA: Controle de Frequência, Recompra Parametrizada e Insights
         function processarDashboardERelatorios() {
             const [anoSel, mesSel] = filtroMes.value.split('-');
             const mesInteiro = parseInt(mesSel) - 1;
 
-            // Filtro mensal de vendas
             const vendasFiltradas = listaGeralVendas.filter(vd => {
                 const d = new Date(vd.data_venda);
                 return d.getFullYear() === parseInt(anoSel) && d.getMonth() === mesInteiro;
             });
 
-            // Atualiza KPIs
             document.getElementById('kpiTotalClientes').innerText = listaGeralClientes.length;
             document.getElementById('kpiVendasMes').innerText = vendasFiltradas.length;
 
@@ -429,7 +416,6 @@
             });
             document.getElementById('kpiAnivPets').innerText = petsAniv.length;
 
-            // RENDERIZAÇÃO DA TABELA DE RELATÓRIOS MENSAL
             if (vendasFiltradas.length > 0) {
                 vendasTableBody.innerHTML = '';
                 vendasFiltradas.forEach(v => {
@@ -446,7 +432,6 @@
                 vendasTableBody.innerHTML = `<tr><td colspan="4" class="empty-row">Nenhuma venda registrada neste mês.</td></tr>`;
             }
 
-            // GERAÇÃO DE ALERTAS DA IA (FREQUÊNCIA, RECOMPRA E INSIGHTS DE COMPRA)
             crmAlertsPanel.innerHTML = '';
 
             listaGeralClientes.forEach(cli => {
@@ -457,42 +442,35 @@
                 const petsDoCliente = listaGeralPets.filter(p => p.cliente_id === cli.id);
 
                 if (comprasDoCliente.length >= 2) {
-                    // IA calcula intervalo médio de frequência entre compras
                     let totalDias = 0;
                     for (let i = 1; i < comprasDoCliente.length; i++) {
                         const diffTime = Math.abs(new Date(comprasDoCliente[i].data_venda) - new Date(comprasDoCliente[i-1].data_venda));
                         totalDias += Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     }
                     const frequenciaMediaDias = Math.ceil(totalDias / (comprasDoCliente.length - 1));
-                    
                     const ultimaCompra = new Date(comprasDoCliente[comprasDoCliente.length - 1].data_venda);
                     const hoje = new Date();
                     const diasDesdeUltimaCompra = Math.ceil(Math.abs(hoje - ultimaCompra) / (1000 * 60 * 60 * 24));
-                    
-                    // Alerta parametrizável baseado nos dias restantes para acabar o produto
                     const diasParaProximaCompra = frequenciaMediaDias - diasDesdeUltimaCompra;
                     
                     if (diasParaProximaCompra <= diasPrevisaoParametro && diasParaProximaCompra >= 0) {
                         const box = document.createElement('div');
                         box.className = 'alert-box alert-preference';
                         box.innerHTML = `
-                            <div>⏰ <strong>Previsão de Recompra IA:</strong> O produto de <strong>${cli.nome}</strong> deve acabar em <strong>${diasParaProximaCompra} dias</strong> (Ciclo médio de ${frequenciaMediaDias} dias).</div>
+                            <div>⏰ <strong>Previsão de Recompra IA:</strong> O produto de <strong>${cli.nome}</strong> deve acabar em <strong>${diasParaProximaCompra} dias</strong>.</div>
                             <button class="btn-whatsapp" onclick="dispararWhats('${cli.celular}', '${cli.nome}', 'recompra')">💬 Lembrar Cliente</button>
                         `;
                         crmAlertsPanel.appendChild(box);
                     }
                 }
 
-                // GERAÇÃO DE INSIGHTS COM BASE NO PERFIL DE PRODUTOS E QUANTIDADE DE PETS
                 if (comprasDoCliente.length > 0 && petsDoCliente.length > 0) {
                     const comprouApenasRacao = comprasDoCliente.every(v => v.produto_comprado.toLowerCase().includes('ração'));
-                    const totalPets = petsDoCliente.length;
-
                     if (comprouApenasRacao) {
                         const box = document.createElement('div');
                         box.className = 'alert-box alert-insight';
                         box.innerHTML = `
-                            <div>💡 <strong>Insight da IA:</strong> O cliente <strong>${cli.nome}</strong> possui ${totalPets} pet(s), mas só compra ração essencial. Oferte petiscos, brinquedos ou bifinhos no próximo atendimento para aumentar o ticket!</div>
+                            <div>💡 <strong>Insight da IA:</strong> <strong>${cli.nome}</strong> só compra ração essencial. Ofereça petiscos ou mimos no próximo contato!</div>
                             <button class="btn-whatsapp" onclick="dispararWhats('${cli.celular}', '${cli.nome}', 'mimo')">🎁 Oferecer Mimo</button>
                         `;
                         crmAlertsPanel.appendChild(box);
@@ -503,11 +481,9 @@
 
         function dispararWhats(celular, nome, tipo) {
             let msg = `Olá ${nome}, tudo bem?`;
-            if (tipo === 'recompra') msg += ` Passando para lembrar que a ração do seu pet deve estar próxima do fim. Quer que deixemos uma nova reservada ou fazemos a entrega?`;
-            if (tipo === 'mimo') msg += ` Acabamos de receber novos brinquedos e petiscos deliciosos na Valparaiso PetStore! Seu pet vai amar. Venha conferir!`;
-            
-            const link = `https://api.whatsapp.com/send?phone=${celular.replace(/\D/g, '')}&text=${encodeURIComponent(msg)}`;
-            window.open(link, '_blank');
+            if (tipo === 'recompra') msg += ` Passando para lembrar que a ração do seu pet deve estar próxima do fim. Quer deixar uma nova reservada?`;
+            if (tipo === 'mimo') msg += ` Recebemos novidades em petiscos e mimos na Valparaiso PetStore! Seu pet vai amar. Venha conferir!`;
+            window.open(`https://api.whatsapp.com/send?phone=${celular.replace(/\D/g, '')}&text=${encodeURIComponent(msg)}`, '_blank');
         }
 
         function detalharKPI(tipo) {
@@ -527,7 +503,7 @@
                 if(filtrados.length === 0) body.innerHTML = "Nenhum pet faz aniversário neste mês.";
                 filtrados.forEach(p => body.innerHTML += `🐾 <strong>${p.nome_pet}</strong> - Níver: ${p.aniversario_pet.split('-').reverse().join('/')}<br>`);
             } else {
-                body.innerHTML = "Use as abas laterais do menu para navegar pelas listagens completas e consolidadas.";
+                body.innerHTML = "Use as abas laterais do menu para navegar pelas listagens completas.";
             }
         }
 
@@ -536,6 +512,8 @@
         window.addEventListener('DOMContentLoaded', () => {
             inicializarFiltroMeses();
             carregarDadosGlobais();
+            // Inicia mostrando apenas o painel principal
+            mudarAba('painel');
         });
     </script>
 </body>
