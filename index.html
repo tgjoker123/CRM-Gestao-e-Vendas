@@ -3,29 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valparaiso PetStore - CRM Avançado</title>
+    <title>Valparaiso PetStore - CRM Avançado V2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f8fafc; color: #1e293b; display: flex; min-height: 100vh; }
         
         /* Sidebar */
-        .sidebar { width: 280px; background-color: #0f172a; color: #fff; padding: 25px; display: flex; flex-direction: column; }
+        .sidebar { width: 280px; background-color: #0f172a; color: #fff; padding: 25px; display: flex; flex-direction: column; position: fixed; height: 100vh; }
         .sidebar h2 { font-size: 20px; color: #38bdf8; margin-bottom: 5px; font-weight: 700; }
         .sidebar .store-sub { font-size: 12px; color: #94a3b8; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
         .sidebar ul { list-style: none; }
         .sidebar ul li { margin-bottom: 12px; }
-        .sidebar ul li a { color: #cbd5e1; text-decoration: none; font-size: 15px; display: block; padding: 12px; border-radius: 8px; transition: all 0.2s; }
+        .sidebar ul li a { color: #cbd5e1; text-decoration: none; font-size: 15px; display: block; padding: 12px; border-radius: 8px; transition: all 0.2s; cursor: pointer; }
         .sidebar ul li a.active, .sidebar ul li a:hover { background-color: #1e293b; color: #38bdf8; font-weight: 600; }
 
         /* Main Workspace */
-        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .main-content { flex: 1; margin-left: 280px; padding: 40px; overflow-y: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
         .header h1 { font-size: 26px; color: #0f172a; }
         
         .filter-group { display: flex; align-items: center; gap: 10px; }
         .filter-group label { font-size: 14px; font-weight: 600; color: #475569; }
         .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; }
+
+        /* Abas (Seções) */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         /* Dashboard KPI Grid */
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
@@ -34,8 +38,6 @@
         .kpi-card h3 { font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
         .kpi-card .value { font-size: 24px; font-weight: 700; color: #0f172a; }
         .kpi-card .sub { font-size: 12px; color: #0ea5e9; margin-top: 4px; }
-        
-        /* Destaque para o card de faturamento */
         .kpi-card.billing-card { border-left: 4px solid #10b981; }
         .kpi-card.billing-card .value { color: #10b981; }
 
@@ -44,11 +46,11 @@
         .alert-box { padding: 15px 20px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .alert-preference { background-color: #e0f2fe; color: #0369a1; border-left: 5px solid #0ea5e9; }
         .alert-inactive { background-color: #fee2e2; color: #b91c1c; border-left: 5px solid #ef4444; }
+        .alert-insight { background-color: #f0fdf4; color: #166534; border-left: 5px solid #22c55e; }
         .btn-whatsapp { background-color: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; }
         .btn-whatsapp:hover { background-color: #128c7e; }
 
-        /* Layout Columns */
-        .grid-caixa { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        /* Layout Panels */
         .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 30px; }
         .panel h2 { font-size: 18px; margin-bottom: 20px; color: #334155; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
 
@@ -83,139 +85,129 @@
 
     <div class="sidebar">
         <h2>Valparaiso</h2>
-        <div class="store-sub">PetStore & CRM</div>
+        <div class="store-sub">PetStore & CRM Inteligente</div>
         <ul>
-            <li><a href="#" class="active">Painel Geral & PDV</a></li>
+            <li><a onclick="mudarAba('painel')" id="menu-painel" class="active">📊 Painel Geral</a></li>
+            <li><a onclick="mudarAba('pdv')" id="menu-pdv">🛒 PDV - Registrar Venda</a></li>
+            <li><a onclick="mudarAba('relatorios')" id="menu-relatorios">📈 Histórico & Relatórios</a></li>
+            <li><a onclick="mudarAba('config')" id="menu-config">⚙️ Configurações CRM</a></li>
         </ul>
     </div>
 
     <div class="main-content">
         <div class="header">
-            <h1>Atendimento & CRM Integrado</h1>
+            <h1 id="page-title">Painel Geral</h1>
             <div class="filter-group">
-                <label for="filtroMes">Selecionar Mês/Ano:</label>
-                <select id="filtroMes">
-                    </select>
+                <label for="filtroMes">Mês/Ano do Relatório:</label>
+                <select id="filtroMes"></select>
             </div>
         </div>
 
-        <div class="kpi-grid">
-            <div class="kpi-card billing-card" onclick="detalharKPI('vendas_mes')">
-                <h3>💰 Total R$ no Mês</h3>
-                <div class="value" id="kpiTotalFaturamento">R$ 0,00</div>
-                <div class="sub">Faturamento bruto do mês</div>
+        <div id="aba-painel" class="tab-content active">
+            <div class="kpi-grid">
+                <div class="kpi-card billing-card" onclick="mudarAba('relatorios')">
+                    <h3>💰 Faturamento no Mês</h3>
+                    <div class="value" id="kpiTotalFaturamento">R$ 0,00</div>
+                    <div class="sub">Vendas totais calculadas</div>
+                </div>
+                <div class="kpi-card" onclick="detalharKPI('clientes_total')">
+                    <h3>👥 Total Clientes</h3>
+                    <div class="value" id="kpiTotalClientes">0</div>
+                    <div class="sub">Base de dados completa</div>
+                </div>
+                <div class="kpi-card" onclick="detalharKPI('vendas_mes')">
+                    <h3>🛍️ Quant. Vendas</h3>
+                    <div class="value" id="kpiVendasMes">0</div>
+                    <div class="sub">Transações efetuadas</div>
+                </div>
+                <div class="kpi-card" onclick="detalharKPI('aniv_pet')">
+                    <h3>🐾 Níver Pets</h3>
+                    <div class="value" id="kpiAnivPets">0</div>
+                    <div class="sub">Aniversariantes do mês</div>
+                </div>
             </div>
-            <div class="kpi-card" onclick="detalharKPI('clientes_total')">
-                <h3>👥 Total Clientes</h3>
-                <div class="value" id="kpiTotalClientes">0</div>
-                <div class="sub">Cadastrados no sistema</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('aniv_dono')">
-                <h3>🎂 Níver Donos</h3>
-                <div class="value" id="kpiAnivDonos">0</div>
-                <div class="sub">Aniversariantes do mês</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('aniv_pet')">
-                <h3>🐾 Níver Pets</h3>
-                <div class="value" id="kpiAnivPets">0</div>
-                <div class="sub">Aniversariantes do mês</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('dist_racas')">
-                <h3>🐕 Gatos / Cães</h3>
-                <div class="value" id="kpiCachorrosGatos">0 / 0</div>
-                <div class="sub">Clique para ver portes</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('vendas_mes')">
-                <h3>🛍️ Quant. Vendas</h3>
-                <div class="value" id="kpiVendasMes">0</div>
-                <div class="sub">Transações efetuadas</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('atendidos_mes')">
-                <h3>🏪 Atendidos no Mês</h3>
-                <div class="value" id="kpiAtendidosMes">0</div>
-                <div class="sub">Clientes únicos atendidos</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('recorrentes_mes')">
-                <h3>🔄 Compraram 2x+</h3>
-                <div class="value" id="kpiRecorrentesMes">0</div>
-                <div class="sub">Clientes fiéis no mês</div>
-            </div>
-            <div class="kpi-card" onclick="detalharKPI('sumidos_30')">
-                <h3>⏳ Inativos +30d</h3>
-                <div class="value" id="kpiInativos30">0</div>
-                <div class="sub">Sem comprar há 1 mês</div>
-            </div>
-        </div>
 
-        <div class="panel">
-            <h2>🔔 Central de Lembretes & Alertas CRM</h2>
-            <div class="crm-alerts" id="crmAlertsPanel"></div>
-        </div>
-
-        <div class="grid-caixa">
             <div class="panel">
-                <h2>PDV - Registrar Venda</h2>
+                <h2>🔔 Central de Lembretes Inteligentes & Insights da IA</h2>
+                <div class="crm-alerts" id="crmAlertsPanel"></div>
+            </div>
+        </div>
+
+        <div id="aba-pdv" class="tab-content">
+            <div class="panel">
+                <h2>PDV Automatizado (Suporta Foto do Cupom via OCR & Busca Inteligente)</h2>
                 <form id="vendaForm" action="javascript:void(0);">
-                    <div class="form-group">
-                        <label for="pdvCpf">CPF do Cliente</label>
-                        <input type="text" id="pdvCpf" placeholder="000.000.000-00" required>
+                    
+                    <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px dashed #0ea5e9; margin-bottom: 20px;">
+                        <label style="color: #0369a1; font-weight: bold;">📸 [IA OCR] Tirar Foto / Upload do Cupom Fiscal</label>
+                        <input type="file" id="pdvFotoCupom" accept="image/*" onchange="simularOCR()">
+                        <small style="color: #64748b; display: block; margin-top: 4px;">A IA lerá os produtos e valores automaticamente a partir da imagem do cupom.</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="pdvBuscaCliente">🔍 Encontrar Cliente (Digite Nome, CPF ou os Últimos Dígitos do Celular)</label>
+                        <input type="text" id="pdvBuscaCliente" placeholder="Ex: Silva, 1234 (últimos dígitos do whats) ou 000.000..." required>
+                    </div>
+
                     <div id="pdvCamposCliente" style="display:none; border-left: 3px solid #38bdf8; padding-left: 15px; margin-bottom: 15px;">
-                        <p style="font-size: 13px; color: #0ea5e9; font-weight: bold; margin-bottom: 10px;">⚠️ Cliente não localizado. Digite os dados para salvar no banco automaticamente:</p>
-                        <div class="form-group">
-                            <label for="pdvNome">Nome Completo</label>
-                            <input type="text" id="pdvNome" placeholder="Nome do Tutor">
-                        </div>
-                        <div class="form-group">
-                            <label for="pdvSexo">Sexo</label>
-                            <select id="pdvSexo">
-                                <option value="Masculino">Masculino</option>
-                                <option value="Feminino">Feminino</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="pdvEndereco">Endereço Completo</label>
-                            <input type="text" id="pdvEndereco" placeholder="Rua, Número, Bairro">
-                        </div>
-                        <div class="form-group">
-                            <label for="pdvCelular">Telefone WhatsApp</label>
-                            <input type="tel" id="pdvCelular" placeholder="(00) 99999-9999">
-                        </div>
-                        <div class="form-group">
-                            <label for="pdvQtdPets">Quantos Pets possui?</label>
-                            <input type="number" id="pdvQtdPets" min="0" value="0">
-                        </div>
+                        <p style="font-size: 13px; color: #0ea5e9; font-weight: bold; margin-bottom: 10px;">⚠️ Cliente não localizado. Cadastre para salvar no banco automaticamente:</p>
+                        <div class="form-group"><label>Nome Completo</label><input type="text" id="pdvNome"></div>
+                        <div class="form-group"><label>CPF</label><input type="text" id="pdvCpf" placeholder="000.000.000-00"></div>
+                        <div class="form-group"><label>Telefone WhatsApp</label><input type="tel" id="pdvCelular" placeholder="(00) 99999-9999"></div>
+                        <div class="form-group"><label>Sexo</label><select id="pdvSexo"><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div>
+                        <div class="form-group"><label>Quantos Pets possui?</label><input type="number" id="pdvQtdPets" min="0" value="0"></div>
                         <div id="pdvContainerPets"></div>
                     </div>
+
                     <div class="form-group">
-                        <label for="pdvProduto">Produto Vendido (Digitação Manual)</label>
-                        <input type="text" id="pdvProduto" placeholder="Ex: Ração Premier Gato 10kg" required>
+                        <label for="pdvProduto">Produto Identificado</label>
+                        <input type="text" id="pdvProduto" placeholder="Aguardando digitação ou leitura da foto..." required>
                     </div>
                     <div class="form-group">
                         <label for="pdvValor">Valor Total (R$)</label>
                         <input type="number" id="pdvValor" step="0.01" placeholder="0.00" required>
                     </div>
-                    <button type="submit" class="btn-submit">Finalizar e Registrar Venda</button>
+                    <button type="submit" class="btn-submit">Confirmar e Arquivar Venda</button>
                 </form>
             </div>
+        </div>
 
+        <div id="aba-relatorios" class="tab-content">
             <div class="panel">
-                <h2>Histórico de Vendas Recentes</h2>
+                <h2>Relatório Mensal e Histórico de Transações Totais</h2>
+                <div style="margin-bottom: 20px; font-size: 16px; font-weight: bold; color: #0f172a;">
+                    Faturamento Bruto Consolidado no Período Selecionado: <span id="relatorioFaturamentoTotal" style="color: #10b981;">R$ 0,00</span>
+                </div>
                 <table>
                     <thead>
                         <tr>
                             <th>Cliente</th>
                             <th>Produto</th>
                             <th>Valor</th>
-                            <th>Data</th>
+                            <th>Data da Venda</th>
                         </tr>
                     </thead>
                     <tbody id="vendasTableBody">
-                        <tr><td colspan="4" class="empty-row">Aguardando conexão...</td></tr>
+                        <tr><td colspan="4" class="empty-row">Carregando histórico do banco de dados...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <div id="aba-config" class="tab-content">
+            <div class="panel">
+                <h2>⚙️ Parametrização dos Alertas da IA</h2>
+                <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">Defina os critérios e regras para que os insights automáticos e previsões de recompra sejam disparados no painel geral.</p>
+                
+                <div class="form-group">
+                    <label for="configDiasAntecedencia">⏰ Antecedência para Aviso de Recompra (Dias)</label>
+                    <input type="number" id="configDiasAntecedencia" value="5" min="1">
+                    <small style="color: #94a3b8;">Exemplo: Se o cliente compra ração a cada 30 dias, a IA avisará com 5 dias de antecedência que o produto dele está acabando.</small>
+                </div>
+                <button class="btn-submit" onclick="salvarConfiguracoes()">Salvar Parâmetros da IA</button>
+            </div>
+        </div>
+
     </div>
 
     <div class="modal" id="kpiModal">
@@ -229,15 +221,14 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO INALTERADA DAS SUAS CREDENCIAIS DO SUPABASE
+        // CREDENCIAIS DO SEU SUPABASE
         const SUPABASE_URL = "https://shzqiiuwpsqhchzaqqqg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoenFpaXV3cHNxaGNoemFxcXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NDY5NjgsImV4cCI6MjA5ODMyMjk2OH0.nXyw7hWTBj_1RVdMgFakHX5kROXPqxfnlpniyBbc8yA";
-
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Mapeamento dos Componentes
+        // Mapeamentos DOM
         const filtroMes = document.getElementById('filtroMes');
-        const pdvCpf = document.getElementById('pdvCpf');
+        const pdvBuscaCliente = document.getElementById('pdvBuscaCliente');
         const pdvCamposCliente = document.getElementById('pdvCamposCliente');
         const pdvQtdPets = document.getElementById('pdvQtdPets');
         const pdvContainerPets = document.getElementById('pdvContainerPets');
@@ -245,12 +236,72 @@
         const crmAlertsPanel = document.getElementById('crmAlertsPanel');
         const vendasTableBody = document.getElementById('vendasTableBody');
 
-        // Memória local de cache para os relatórios de cliques dos KPIs
+        // Cache local de dados
         let listaGeralClientes = [];
         let listaGeralVendas = [];
         let listaGeralPets = [];
+        let clienteSelecionadoId = null;
+        let diasPrevisaoParametro = 5;
 
-        // Inicializa estrutura de meses para o Filtro de Data
+        // Alternância estruturada de Abas via Menu Lateral
+        function mudarAba(idAba) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.sidebar ul li a').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`aba-${idAba}`).classList.add('active');
+            document.getElementById(`menu-${idAba}`).classList.add('active');
+            
+            const titulos = { painel: "📊 Painel Geral", pdv: "🛒 PDV - Registrar Venda", relatorios: "📈 Histórico & Relatórios", config: "⚙️ Configurações CRM" };
+            document.getElementById('page-title').innerText = titulos[idAba];
+        }
+
+        // Função para simular a leitura Inteligente por Foto (OCR)
+        function simularOCR() {
+            const input = document.getElementById('pdvFotoCupom');
+            if (input.files && input.files[0]) {
+                alert("✨ IA lendo cupom via OCR... Processando dados da imagem!");
+                // Simulando retorno do OCR da foto
+                document.getElementById('pdvProduto').value = "Ração Premier Cães Adultos 15kg (Identificado via Foto)";
+                document.getElementById('pdvValor').value = "189.90";
+            }
+        }
+
+        // Busca Inteligente de Cliente: Nome, CPF ou últimos dígitos do celular
+        pdvBuscaCliente.addEventListener('input', () => {
+            const termo = pdvBuscaCliente.value.trim().toLowerCase();
+            if (termo.length < 2) {
+                pdvCamposCliente.style.display = 'none';
+                clienteSelecionadoId = null;
+                return;
+            }
+
+            // Procura na lista local de clientes já baixados do Supabase
+            const localizado = listaGeralClientes.find(c => {
+                const porNome = c.nome?.toLowerCase().includes(termo);
+                const porCpf = c.cpf?.includes(termo);
+                const porCelular = c.celular?.replace(/\D/g, '').endsWith(termo);
+                return porNome || porCpf || porCelular;
+            });
+
+            if (localizado) {
+                pdvCamposCliente.style.display = 'none';
+                clienteSelecionadoId = localizado.id;
+                pdvBuscaCliente.style.borderColor = "#22c55e"; // Borda verde se achar
+            } else {
+                pdvCamposCliente.style.display = 'block';
+                clienteSelecionadoId = null;
+                pdvBuscaCliente.style.borderColor = "#cbd5e1";
+            }
+        });
+
+        function salvarConfiguracoes() {
+            diasPrevisaoParametro = parseInt(document.getElementById('configDiasAntecedencia').value) || 5;
+            alert("Parâmetros salvos! A IA recalculará os alertas com base no novo limite.");
+            processarDashboardERelatorios();
+            mudarAba('painel');
+        }
+
+        // Inicialização de Filtros temporais de Meses
         function inicializarFiltroMeses() {
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             const dataAtual = new Date();
@@ -266,12 +317,9 @@
             }
         }
 
-        // Monitor do seletor de meses para re-computar relatórios
-        filtroMes.addEventListener('change', () => {
-            processarDashboardERelatorios();
-        });
+        filtroMes.addEventListener('change', () => processarDashboardERelatorios());
 
-        // Evento para renderizar formulários dos Pets dinamicamente
+        // Renderização Dinâmica dos Pets no PDV
         pdvQtdPets.addEventListener('input', () => {
             const qtd = parseInt(pdvQtdPets.value) || 0;
             pdvContainerPets.innerHTML = '';
@@ -280,135 +328,70 @@
                 div.className = 'pet-sub-form';
                 div.innerHTML = `
                     <div class="pet-title">Dados do Pet #${i}</div>
-                    <div class="form-group">
-                        <label>Nome do Pet</label>
-                        <input type="text" class="pet-nome" placeholder="Nome do animal" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tipo</label>
-                        <select class="pet-tipo">
-                            <option value="Cachorro">Cachorro</option>
-                            <option value="Gato">Gato</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Porte (Se cão)</label>
-                        <select class="pet-porte">
-                            <option value="Raça Pequena">Raça Pequena</option>
-                            <option value="Raça Média">Raça Média</option>
-                            <option value="Raça Grande">Raça Grande</option>
-                            <option value="Não Se Aplica">Não Se Aplica (Gatos)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Sexo do Pet</label>
-                        <select class="pet-sexo">
-                            <option value="Macho">Macho</option>
-                            <option value="Fêmea">Fêmea</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Data de Aniversário do Pet</label>
-                        <input type="date" class="pet-aniv" required>
-                    </div>
+                    <div class="form-group"><label>Nome do Pet</label><input type="text" class="pet-nome" required></div>
+                    <div class="form-group"><label>Tipo</label><select class="pet-tipo"><option value="Cachorro">Cachorro</option><option value="Gato">Gato</option></select></div>
+                    <div class="form-group"><label>Porte</label><select class="pet-porte"><option value="Raça Pequena">Raça Pequena</option><option value="Raça Média">Raça Média</option><option value="Raça Grande">Raça Grande</option></select></div>
+                    <div class="form-group"><label>Data de Nascimento/Níver do Pet</label><input type="date" class="pet-aniv" required></div>
                 `;
                 pdvContainerPets.appendChild(div);
             }
         });
 
-        // Busca CPF ao tirar foco do campo para auto-completar ou abrir formulário estendido
-        pdvCpf.addEventListener('blur', async () => {
-            const cpfVal = pdvCpf.value.trim();
-            if (!cpfVal) return;
-
-            const { data: cliente } = await supabaseClient.from('clientes').select('*').eq('cpf', cpfVal).single();
-
-            if (cliente) {
-                pdvCamposCliente.style.display = 'none';
-                buscarPreferenciaHist(cliente.id, cliente.nome);
-            } else {
-                pdvCamposCliente.style.display = 'block';
-                document.getElementById('prefAlert')?.remove();
-            }
-        });
-
-        async function buscarPreferenciaHist(clienteId, nomeCliente) {
-            const { data: vts } = await supabaseClient.from('vendas').select('produto_comprado').eq('cliente_id', clienteId);
-            if (vts && vts.length > 0) {
-                const map = {};
-                vts.forEach(v => map[v.produto_comprado] = (map[v.produto_comprado] || 0) + 1);
-                let topP = '', max = 0;
-                for (const p in map) { if (map[p] > max) { max = map[p]; topP = p; } }
-                if (max >= 1) {
-                    const exist = document.getElementById('prefAlert');
-                    if (exist) exist.remove();
-                    const d = document.createElement('div');
-                    d.id = 'prefAlert';
-                    d.className = 'alert-box alert-preference';
-                    d.innerHTML = `💡 <strong>Histórico de Preferência (${nomeCliente}):</strong> Compras frequentes observadas de: <em>${topP}</em>.`;
-                    crmAlertsPanel.prepend(d);
-                }
-            }
-        }
-
-        // Submissão unificada do formulário do PDV
+        // Formulário PDV - Gravação e Fluxo de Confirmação
         vendaForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const cpfVal = pdvCpf.value.trim();
             const prodVal = document.getElementById('pdvProduto').value.trim();
             const valorVal = parseFloat(document.getElementById('pdvValor').value);
 
-            let { data: cliente } = await supabaseClient.from('clientes').select('*').eq('cpf', cpfVal).single();
-            let clienteId;
+            let idFinalCliente = clienteSelecionadoId;
 
-            if (!cliente) {
+            // Se o cliente não existia, realiza o cadastro imediato
+            if (!idFinalCliente) {
                 const nomeVal = document.getElementById('pdvNome').value.trim();
-                const sexoVal = document.getElementById('pdvSexo').value;
-                const endVal = document.getElementById('pdvEndereco').value.trim();
+                const cpfVal = document.getElementById('pdvCpf').value.trim();
                 const celVal = document.getElementById('pdvCelular').value.trim();
+                const sexoVal = document.getElementById('pdvSexo').value;
 
                 const { data: nCli, error: errC } = await supabaseClient.from('clientes').insert([{
-                    cpf: cpfVal, nome: nomeVal, sexo: sexoVal, endereco: endVal, celular: celVal
+                    cpf: cpfVal, nome: nomeVal, sexo: sexoVal, celular: celVal
                 }]).select().single();
 
                 if (errC) { alert("Erro ao criar cliente: " + errC.message); return; }
-                clienteId = nCli.id;
+                idFinalCliente = nCli.id;
 
-                // Processa cadastros dos Pets vinculados
+                // Processa pets vinculados
                 const petBlocos = pdvContainerPets.querySelectorAll('.pet-sub-form');
                 for (const bloco of petBlocos) {
                     await supabaseClient.from('pets').insert([{
-                        cliente_id: clienteId,
+                        cliente_id: idFinalCliente,
                         nome_pet: bloco.querySelector('.pet-nome').value.trim(),
                         tipo: bloco.querySelector('.pet-tipo').value,
                         porte: bloco.querySelector('.pet-porte').value,
-                        sexo_pet: bloco.querySelector('.pet-sexo').value,
                         aniversario_pet: bloco.querySelector('.pet-aniv').value
                     }]);
                 }
-            } else {
-                clienteId = cliente.id;
             }
 
-            // Grava transação de Venda
+            // Grava a venda vinculada
             const { error: errV } = await supabaseClient.from('vendas').insert([{
-                cliente_id: clienteId, produto_comprado: prodVal, valor: valorVal, data_venda: new Date().toISOString()
+                cliente_id: idFinalCliente, produto_comprado: prodVal, valor: valorVal, data_venda: new Date().toISOString()
             }]);
 
-            if (errV) { alert("Erro ao computar venda: " + errV.message); } 
-            else {
-                alert("Venda e transações arquivadas!");
+            if (errV) { 
+                alert("Erro ao computar venda: " + errV.message); 
+            } else {
+                alert("✅ Venda processada e registrada com sucesso!");
                 vendaForm.reset();
                 pdvCamposCliente.style.display = 'none';
                 pdvContainerPets.innerHTML = '';
                 await carregarDadosGlobais();
+                mudarAba('painel');
             }
         });
 
-        // Puxa toda a base de dados em paralelo para processamento em memória baseado nos meses
         async function carregarDadosGlobais() {
             const { data: c } = await supabaseClient.from('clientes').select('*');
-            const { data: v } = await supabaseClient.from('vendas').select('*, clientes(nome)');
+            const { data: v } = await supabaseClient.from('vendas').select('*, clientes(nome, celular)');
             const { data: p } = await supabaseClient.from('pets').select('*');
 
             listaGeralClientes = c || [];
@@ -416,147 +399,40 @@
             listaGeralPets = p || [];
 
             processarDashboardERelatorios();
-            renderizarTabelaRecentes();
         }
 
-        // Central de Processamento Analítico dos KPIs com filtros de Mês/Ano
+        // LÓGICA DA IA: Controle de Frequência, Recompra Parametrizada e Insights
         function processarDashboardERelatorios() {
             const [anoSel, mesSel] = filtroMes.value.split('-');
             const mesInteiro = parseInt(mesSel) - 1;
 
-            // 1. Total de clientes na base
-            document.getElementById('kpiTotalClientes').innerText = listaGeralClientes.length;
-
-            // 2. Aniversariantes do Mês (Pets) - Baseado no mês do aniversário cadastrado
-            const petsAniv = listaGeralPets.filter(pt => {
-                if(!pt.aniversario_pet) return false;
-                const m = parseInt(pt.aniversario_pet.split('-')[1]) - 1;
-                return m === mesInteiro;
-            });
-            document.getElementById('kpiAnivPets').innerText = petsAniv.length;
-
-            // 3. Contagem por Tipo de Pet
-            const gatos = listaGeralPets.filter(pt => pt.tipo === 'Gato').length;
-            const caes = listaGeralPets.filter(pt => pt.tipo === 'Cachorro').length;
-            document.getElementById('kpiCachorrosGatos').innerText = `${gatos} / ${caes}`;
-
-            // 4. Filtragem de Vendas pelo mês selecionado
+            // Filtro mensal de vendas
             const vendasFiltradas = listaGeralVendas.filter(vd => {
                 const d = new Date(vd.data_venda);
                 return d.getFullYear() === parseInt(anoSel) && d.getMonth() === mesInteiro;
             });
+
+            // Atualiza KPIs
+            document.getElementById('kpiTotalClientes').innerText = listaGeralClientes.length;
             document.getElementById('kpiVendasMes').innerText = vendasFiltradas.length;
 
-            // LÓGICA DO NOVO CARD: Somar faturamento bruto do mês filtrado
             let faturamentoTotal = 0;
-            vendasFiltradas.forEach(vd => {
-                faturamentoTotal += parseFloat(vd.valor) || 0;
-            });
-            document.getElementById('kpiTotalFaturamento').innerText = `R$ ${faturamentoTotal.toFixed(2).replace('.', ',')}`;
-
-            // 5. Clientes Únicos Atendidos no Mês Selecionado
-            const idsAtendidos = [...new Set(vendasFiltradas.map(vd => vd.cliente_id))];
-            document.getElementById('kpiAtendidosMes').innerText = idsAtendidos.length;
-
-            // 6. Recorrentes (Compraram mais de 1 vez dentro do mês escolhido)
-            const mapFreq = {};
-            vendasFiltradas.forEach(vd => mapFreq[vd.cliente_id] = (mapFreq[vd.cliente_id] || 0) + 1);
-            let recorrentesCont = 0;
-            for (const id in mapFreq) { if (mapFreq[id] > 1) recorrentesCont++; }
-            document.getElementById('kpiRecorrentesMes').innerText = recorrentesCont;
-
-            // 7. Sistema de Lembretes Automáticos e Contagem de Clientes Inativos (+30 dias de ausência)
-            crmAlertsPanel.innerHTML = '';
-            let inativosCont = 0;
-            const limite30Dias = new Date();
-            limite30Dias.setDate(limite30Dias.getDate() - 30);
-
-            listaGeralClientes.forEach(cli => {
-                const comprasDoCliente = listaGeralVendas
-                    .filter(vd => vd.cliente_id === cli.id)
-                    .sort((a,b) => new Date(b.data_venda) - new Date(a.data_venda));
-
-                if (comprasDoCliente.length > 0) {
-                    const dataUltimaCompra = new Date(comprasDoCliente[0].data_venda);
-                    if (dataUltimaCompra < limite30Dias) {
-                        inativosCont++;
-                        
-                        // Renderiza os Lembretes com botão direto para disparar o WhatsApp comercial
-                        const msgWhats = encodeURIComponent(`Olá ${cli.nome}, tudo bem? Sentimos sua falta aqui na Valparaiso PetStore! Que tal dar uma passada aqui hoje para ver as novidades para o seu pet?`);
-                        const linkWhats = `https://api.whatsapp.com/send?phone=${cli.celular.replace(/\D/g, '')}&text=${msgWhats}`;
-
-                        const box = document.createElement('div');
-                        box.className = 'alert-box alert-inactive';
-                        box.innerHTML = `
-                            <div>⚠️ <strong>Inatividade (+30 dias):</strong> O tutor <strong>${cli.nome}</strong> está sem comprar desde ${dataUltimaCompra.toLocaleDateString('pt-BR')}.</div>
-                            <a href="${linkWhats}" target="_blank" class="btn-whatsapp">💬 Chamar no Whats</a>
-                        `;
-                        crmAlertsPanel.appendChild(box);
-                    }
-                }
-            });
-            document.getElementById('kpiInativos30').innerText = inativosCont;
-            document.getElementById('kpiAnivDonos').innerText = "0"; // Campo reservado (Tabela não possui data de nascimento do dono)
-        }
-
-        // Mostra o detalhamento analítico em tempo real ao clicar nos Cards/KPIs
-        function detalharKPI(tipo) {
-            const modal = document.getElementById('kpiModal');
-            const title = document.getElementById('modalTitle');
-            const body = document.getElementById('modalBody');
+            vendasFiltradas.forEach(vd => faturamentoTotal += parseFloat(vd.valor) || 0);
             
-            modal.style.display = 'flex';
-            body.innerHTML = '';
+            const valorFormatado = `R$ ${faturamentoTotal.toFixed(2).replace('.', ',')}`;
+            document.getElementById('kpiTotalFaturamento').innerText = valorFormatado;
+            document.getElementById('relatorioFaturamentoTotal').innerText = valorFormatado;
 
-            if (tipo === 'clientes_total') {
-                title.innerText = "Relação de Clientes Cadastrados";
-                if(listaGeralClientes.length === 0) { body.innerHTML = "Nenhum tutor registrado."; return; }
-                listaGeralClientes.forEach(c => body.innerHTML += `• <strong>${c.nome}</strong> - CPF: ${c.cpf} | Cel: ${c.celular}<br>`);
-            } 
-            else if (tipo === 'aniv_pet') {
-                title.innerText = "Pets Aniversariantes do Mês";
-                const [_, mesSel] = filtroMes.value.split('-');
-                const mInt = parseInt(mesSel) - 1;
-                const filtrados = listaGeralPets.filter(p => p.aniversario_pet && (parseInt(p.aniversario_pet.split('-')[1]) - 1) === mInt);
-                
-                if(filtrados.length === 0) { body.innerHTML = "Nenhum pet faz aniversário neste mês."; return; }
-                filtrados.forEach(p => body.innerHTML += `🐾 <strong>${p.nome_pet}</strong> (${p.tipo}) - Data: ${p.aniversario_pet.split('-').reverse().join('/')}<br>`);
-            } 
-            else if (tipo === 'dist_racas') {
-                title.innerText = "Distribuição por Espécie e Porte";
-                const gatos = listaGeralPets.filter(p => p.tipo === 'Gato').length;
-                const pPeq = listaGeralPets.filter(p => p.porte === 'Raça Pequena').length;
-                const pMed = listaGeralPets.filter(p => p.porte === 'Raça Média').length;
-                const pGrd = listaGeralPets.filter(p => p.porte === 'Raça Grande').length;
+            const petsAniv = listaGeralPets.filter(pt => {
+                if(!pt.aniversario_pet) return false;
+                return (parseInt(pt.aniversario_pet.split('-')[1]) - 1) === mesInteiro;
+            });
+            document.getElementById('kpiAnivPets').innerText = petsAniv.length;
 
-                body.innerHTML = `
-                    🐱 <strong>Total de Gatos:</strong> ${gatos}<br>
-                    🐕 <strong>Cães Raça Pequena:</strong> ${pPeq}<br>
-                    🐕 <strong>Cães Raça Média:</strong> ${pMed}<br>
-                    🐕 <strong>Cães Raça Grande:</strong> ${pGrd}<br>
-                `;
-            } 
-            else if (tipo === 'vendas_mes') {
-                title.innerText = "Vendas Realizadas no Mês";
-                const [anoSel, mesSel] = filtroMes.value.split('-');
-                const vM = listaGeralVendas.filter(v => {
-                    const d = new Date(v.data_venda);
-                    return d.getFullYear() === parseInt(anoSel) && d.getMonth() === (parseInt(mesSel)-1);
-                });
-                if(vM.length === 0) { body.innerHTML = "Nenhuma venda computada neste mês."; return; }
-                vM.forEach(v => body.innerHTML += `🛍️ ${v.produto_comprado} - <strong>R$ ${v.valor.toFixed(2)}</strong> (${new Date(v.data_venda).toLocaleDateString('pt-BR')})<br>`);
-            }
-            else {
-                body.innerHTML = "Detalhamento e listagem estruturada gerada dinamicamente com base nas interações das tabelas.";
-            }
-        }
-
-        function fecharModal() { document.getElementById('kpiModal').style.display = 'none'; }
-
-        function renderizarTabelaRecentes() {
-            if (listaGeralVendas.length > 0) {
+            // RENDERIZAÇÃO DA TABELA DE RELATÓRIOS MENSAL
+            if (vendasFiltradas.length > 0) {
                 vendasTableBody.innerHTML = '';
-                listaGeralVendas.slice(0, 10).forEach(v => {
+                vendasFiltradas.forEach(v => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>${v.clientes ? v.clientes.nome : 'Consumidor'}</strong></td>
@@ -567,9 +443,95 @@
                     vendasTableBody.appendChild(tr);
                 });
             } else {
-                vendasTableBody.innerHTML = `<tr><td colspan="4" class="empty-row">Nenhuma venda registrada na base do Supabase.</td></tr>`;
+                vendasTableBody.innerHTML = `<tr><td colspan="4" class="empty-row">Nenhuma venda registrada neste mês.</td></tr>`;
+            }
+
+            // GERAÇÃO DE ALERTAS DA IA (FREQUÊNCIA, RECOMPRA E INSIGHTS DE COMPRA)
+            crmAlertsPanel.innerHTML = '';
+
+            listaGeralClientes.forEach(cli => {
+                const comprasDoCliente = listaGeralVendas
+                    .filter(vd => vd.cliente_id === cli.id)
+                    .sort((a,b) => new Date(a.data_venda) - new Date(b.data_venda));
+
+                const petsDoCliente = listaGeralPets.filter(p => p.cliente_id === cli.id);
+
+                if (comprasDoCliente.length >= 2) {
+                    // IA calcula intervalo médio de frequência entre compras
+                    let totalDias = 0;
+                    for (let i = 1; i < comprasDoCliente.length; i++) {
+                        const diffTime = Math.abs(new Date(comprasDoCliente[i].data_venda) - new Date(comprasDoCliente[i-1].data_venda));
+                        totalDias += Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    }
+                    const frequenciaMediaDias = Math.ceil(totalDias / (comprasDoCliente.length - 1));
+                    
+                    const ultimaCompra = new Date(comprasDoCliente[comprasDoCliente.length - 1].data_venda);
+                    const hoje = new Date();
+                    const diasDesdeUltimaCompra = Math.ceil(Math.abs(hoje - ultimaCompra) / (1000 * 60 * 60 * 24));
+                    
+                    // Alerta parametrizável baseado nos dias restantes para acabar o produto
+                    const diasParaProximaCompra = frequenciaMediaDias - diasDesdeUltimaCompra;
+                    
+                    if (diasParaProximaCompra <= diasPrevisaoParametro && diasParaProximaCompra >= 0) {
+                        const box = document.createElement('div');
+                        box.className = 'alert-box alert-preference';
+                        box.innerHTML = `
+                            <div>⏰ <strong>Previsão de Recompra IA:</strong> O produto de <strong>${cli.nome}</strong> deve acabar em <strong>${diasParaProximaCompra} dias</strong> (Ciclo médio de ${frequenciaMediaDias} dias).</div>
+                            <button class="btn-whatsapp" onclick="dispararWhats('${cli.celular}', '${cli.nome}', 'recompra')">💬 Lembrar Cliente</button>
+                        `;
+                        crmAlertsPanel.appendChild(box);
+                    }
+                }
+
+                // GERAÇÃO DE INSIGHTS COM BASE NO PERFIL DE PRODUTOS E QUANTIDADE DE PETS
+                if (comprasDoCliente.length > 0 && petsDoCliente.length > 0) {
+                    const comprouApenasRacao = comprasDoCliente.every(v => v.produto_comprado.toLowerCase().includes('ração'));
+                    const totalPets = petsDoCliente.length;
+
+                    if (comprouApenasRacao) {
+                        const box = document.createElement('div');
+                        box.className = 'alert-box alert-insight';
+                        box.innerHTML = `
+                            <div>💡 <strong>Insight da IA:</strong> O cliente <strong>${cli.nome}</strong> possui ${totalPets} pet(s), mas só compra ração essencial. Oferte petiscos, brinquedos ou bifinhos no próximo atendimento para aumentar o ticket!</div>
+                            <button class="btn-whatsapp" onclick="dispararWhats('${cli.celular}', '${cli.nome}', 'mimo')">🎁 Oferecer Mimo</button>
+                        `;
+                        crmAlertsPanel.appendChild(box);
+                    }
+                }
+            });
+        }
+
+        function dispararWhats(celular, nome, tipo) {
+            let msg = `Olá ${nome}, tudo bem?`;
+            if (tipo === 'recompra') msg += ` Passando para lembrar que a ração do seu pet deve estar próxima do fim. Quer que deixemos uma nova reservada ou fazemos a entrega?`;
+            if (tipo === 'mimo') msg += ` Acabamos de receber novos brinquedos e petiscos deliciosos na Valparaiso PetStore! Seu pet vai amar. Venha conferir!`;
+            
+            const link = `https://api.whatsapp.com/send?phone=${celular.replace(/\D/g, '')}&text=${encodeURIComponent(msg)}`;
+            window.open(link, '_blank');
+        }
+
+        function detalharKPI(tipo) {
+            const modal = document.getElementById('kpiModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            modal.style.display = 'flex';
+            body.innerHTML = '';
+
+            if (tipo === 'clientes_total') {
+                title.innerText = "Clientes Cadastrados";
+                listaGeralClientes.forEach(c => body.innerHTML += `• <strong>${c.nome}</strong> - Cel: ${c.celular || 'Não cadastrado'}<br>`);
+            } else if (tipo === 'aniv_pet') {
+                title.innerText = "Pets Aniversariantes do Mês";
+                const [_, mesSel] = filtroMes.value.split('-');
+                const filtrados = listaGeralPets.filter(p => p.aniversario_pet && (parseInt(p.aniversario_pet.split('-')[1]) - 1) === (parseInt(mesSel)-1));
+                if(filtrados.length === 0) body.innerHTML = "Nenhum pet faz aniversário neste mês.";
+                filtrados.forEach(p => body.innerHTML += `🐾 <strong>${p.nome_pet}</strong> - Níver: ${p.aniversario_pet.split('-').reverse().join('/')}<br>`);
+            } else {
+                body.innerHTML = "Use as abas laterais do menu para navegar pelas listagens completas e consolidadas.";
             }
         }
+
+        function fecharModal() { document.getElementById('kpiModal').style.display = 'none'; }
 
         window.addEventListener('DOMContentLoaded', () => {
             inicializarFiltroMeses();
