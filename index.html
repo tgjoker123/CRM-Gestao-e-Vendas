@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valparaiso PetStore - CRM Avançado V2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f8fafc; color: #1e293b; display: flex; min-height: 100vh; }
@@ -138,9 +139,9 @@
                 <form id="vendaForm" action="javascript:void(0);">
                     
                     <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px dashed #0ea5e9; margin-bottom: 20px;">
-                        <label style="color: #0369a1; font-weight: bold;">📸 [IA OCR] Ler Cupom Fiscal por Imagem</label>
-                        <input type="file" id="pdvFotoCupom" accept="image/*" onchange="simularOCR()">
-                        <small style="color: #64748b; display: block; margin-top: 4px;">A IA preencherá automaticamente os campos de produto e valor abaixo.</small>
+                        <label style="color: #0369a1; font-weight: bold;" id="labelOcr">📸 [IA OCR] Ler Cupom Fiscal por Imagem Real</label>
+                        <input type="file" id="pdvFotoCupom" accept="image/*" onchange="processarOcrReal()">
+                        <small id="statusOcr" style="color: #64748b; display: block; margin-top: 4px;">A biblioteca Tesseract escaneará o texto da imagem carregada linha por linha.</small>
                     </div>
 
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
@@ -262,16 +263,60 @@
             document.getElementById('page-title').innerText = titulos[idAba];
         }
 
-        function simularOCR() {
+        // LEITURA DE OCR REAL UTILIZANDO TESSERACT.JS
+        async function processarOcrReal() {
             const input = document.getElementById('pdvFotoCupom');
-            if (input.files && input.files[0]) {
-                alert("✨ IA lendo cupom via OCR... Processando dados da imagem!");
-                document.getElementById('pdvProduto').value = "Ração Premier Cães Adultos 15kg (Identificado via Foto)";
-                document.getElementById('pdvValor').value = "189.90";
+            const statusOcr = document.getElementById('statusOcr');
+            
+            if (!input.files || !input.files[0]) return;
+
+            statusOcr.innerText = "⏳ Processando imagem... Lendo caracteres da foto (OCR ativo)...";
+            statusOcr.style.color = "#0ea5e9";
+
+            try {
+                const imagem = input.files[0];
+                // Executa o processamento OCR real do arquivo na linguagem português
+                const resultado = await Tesseract.recognize(imagem, 'por');
+                const textoExtraido = resultado.data.text;
+
+                if (!textoExtraido || textoExtraido.trim() === "") {
+                    statusOcr.innerText = "⚠️ Imagem lida, mas nenhum texto nítido foi encontrado.";
+                    statusOcr.style.color = "#ef4444";
+                    return;
+                }
+
+                // ANALISA AS LINHAS DA NOTA FISCAL DE VERDADE
+                const linhas = textoExtraido.split('\n');
+                let maiorTexto = "";
+                let valorIdentificado = "0.00";
+
+                linhas.forEach(linha => {
+                    const limpa = linha.trim();
+                    // Procura termos comuns de produtos longos na nota
+                    if (limpa.length > maiorTexto.length && !limpa.includes('TOTAL') && !limpa.includes('VALOR') && !limpa.match(/[0-9]{11}/)) {
+                        maiorTexto = limpa;
+                    }
+                    // Tenta capturar padrões de preços/valores decimais na nota (ex: 15,90 ou 189.00)
+                    const matchPreco = limpa.match(/(?:TOTAL|VALOR|R\$)?\s*([0-9]+[.,][0-9]{2})/i);
+                    if (matchPreco) {
+                        valorIdentificado = matchPreco[1].replace(',', '.');
+                    }
+                });
+
+                // Preenche os inputs com o que foi extraído na foto real
+                document.getElementById('pdvProduto').value = maiorTexto || "Produto Identificado na Nota";
+                document.getElementById('pdvValor').value = parseFloat(valorIdentificado) ? valorIdentificado : "0.00";
+
+                statusOcr.innerText = "✅ Escaneamento completo! Dados extraídos da foto.";
+                statusOcr.style.color = "#22c55e";
+
+            } catch (erro) {
+                console.error(erro);
+                statusOcr.innerText = "❌ Erro ao processar o OCR da imagem.";
+                statusOcr.style.color = "#ef4444";
             }
         }
 
-        // BUSCA INTELIGENTE PREENCHE OU LIBERA OS INPUTS
         pdvBuscaCliente.addEventListener('input', () => {
             const termo = pdvBuscaCliente.value.trim().toLowerCase();
             if (termo.length < 2) {
@@ -296,12 +341,12 @@
                 document.getElementById('pdvCelular').value = localizado.celular || '';
                 document.getElementById('pdvSexo').value = localizado.sexo || 'Masculino';
                 liberarCamposCliente(false);
-                statusBusca.innerText = "✅ Cliente Encontrado! Dados carregados do banco.";
+                statusBusca.innerText = "✅ Cliente Encontrado! Dados carregados.";
                 statusBusca.style.color = "#22c55e";
             } else {
                 clienteSelecionadoId = null;
                 liberarCamposCliente(true);
-                statusBusca.innerText = "❌ Cliente não localizado. Preencha para cadastrar um novo.";
+                statusBusca.innerText = "❌ Cliente não localizado. Preencha para cadastrar.";
                 statusBusca.style.color = "#ef4444";
             }
         });
@@ -360,7 +405,6 @@
             const valorVal = parseFloat(document.getElementById('pdvValor').value);
             let idFinalCliente = clienteSelecionadoId;
 
-            // Se for um novo cliente, executa o insert real no Supabase
             if (!idFinalCliente) {
                 const nomeVal = document.getElementById('pdvNome').value.trim();
                 const cpfVal = document.getElementById('pdvCpf').value.trim();
@@ -393,7 +437,7 @@
             if (errV) { 
                 alert("Erro ao computar venda: " + errV.message); 
             } else {
-                alert("✅ Sucesso! Transação gravada de verdade no Supabase.");
+                alert("✅ Venda gravada e salva no Supabase.");
                 vendaForm.reset();
                 liberarCamposCliente(true);
                 pdvContainerPets.innerHTML = '';
@@ -493,7 +537,7 @@
                         const box = document.createElement('div');
                         box.className = 'alert-box alert-insight';
                         box.innerHTML = `
-                            <div>💡 <strong>Insight IA:</strong> <strong>${cli.nome}</strong> só compra ração essencial. Ofereça petiscos ou mimos no próximo contato!</div>
+                            <div>💡 <strong>Insight IA:</strong> <strong>${cli.nome}</strong> só compra ração essencial. Ofereça mimos no próximo contato!</div>
                             <button class="btn-whatsapp" onclick="dispararWhats('${cli.celular}', '${cli.nome}', 'mimo')">🎁 Oferecer Mimo</button>
                         `;
                         crmAlertsPanel.appendChild(box);
