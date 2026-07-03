@@ -75,7 +75,7 @@
         .empty-row { text-align: center; color: #94a3b8; padding: 30px; }
 
         /* Scanner Box */
-        #reader { width: 100%; background: #fafafa; border: 1px dashed #0ea5e9; border-radius: 8px; margin-top: 10px; }
+        #reader { width: 100%; max-width: 450px; background: #fafafa; border: 1px dashed #0ea5e9; border-radius: 8px; margin: 10px auto 0 auto; display: none; }
 
         /* Modais */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
@@ -158,14 +158,14 @@
                 <form id="vendaForm" action="javascript:void(0);">
                     
                     <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #0ea5e9; margin-bottom: 20px;">
-                        <label style="color: #0369a1; font-weight: bold;">📷 Escanear QR Code do Cupom Fiscal</label>
-                        <div style="margin-top: 10px; display: flex; gap: 10px;">
-                            <button type="button" onclick="iniciarCamera()" style="background: #0ea5e9; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;">Apontar Câmera</button>
-                            <input type="file" id="qrArquivo" accept="image/*" onchange="lerQrDeArquivo(this)" style="display: none;">
-                            <button type="button" onclick="document.getElementById('qrArquivo').click()" style="background: #64748b; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;">Subir Imagem/Foto</button>
+                        <label style="color: #0369a1; font-weight: bold;">📷 Motor de Leitura do QR Code</label>
+                        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+                            <input type="file" id="qrArquivo" accept="image/*" capture="environment" onchange="lerQrDeArquivo(this)" style="display: none;">
+                            <button type="button" onclick="document.getElementById('qrArquivo').click()" style="background: #0ea5e9; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">📸 Tirar Foto do QR</button>
+                            <button type="button" onclick="iniciarCameraAoVivo()" style="background: #1e293b; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">🎥 Abrir Câmera no Site</button>
                         </div>
                         <div id="reader"></div>
-                        <small id="statusQr" style="color: #64748b; display: block; margin-top: 8px;">Aponte a câmera para o QR Code da nota fiscal ou envie uma foto dele.</small>
+                        <small id="statusQr" style="color: #475569; display: block; margin-top: 8px; font-weight: 500;">Dica: Clique em "Tirar Foto do QR", aponte bem de perto e dispare. O sistema processará o arquivo reduzindo o peso automaticamente.</small>
                     </div>
 
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
@@ -291,48 +291,85 @@
             const titulos = { painel: "📊 Painel Geral", pdv: "🛒 PDV - Registrar Venda", relatorios: "📈 Histórico & Relatórios", config: "⚙️ Configurações CRM" };
             document.getElementById('page-title').innerText = titulos[idAba];
             
-            if (html5QrcodeScanner && idAba !== 'pdv') {
+            if (html5QrcodeScanner) {
+                document.getElementById('reader').style.display = 'none';
                 html5QrcodeScanner.stop().catch(() => {});
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // SCANNER DE QR CODE - VIA CÂMERA
-        function iniciarCamera() {
+        // NOVO MOTOR: INTEGRAÇÃO CAMERA AO VIVO (EXIGE HTTPS NO SERVIDOR)
+        function iniciarCameraAoVivo() {
             const statusQr = document.getElementById('statusQr');
-            statusQr.innerText = "🎥 Ligando a câmera...";
+            const readerDiv = document.getElementById('reader');
+            statusQr.innerText = "🎥 Tentando inicializar stream da câmera...";
+            readerDiv.style.display = 'block';
             
             html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+                { fps: 15, qrbox: { width: 260, height: 260 } },
                 (decodedText) => {
                     processarDadosDoQr(decodedText);
-                    html5QrcodeScanner.stop().catch(() => {});
+                    html5QrcodeScanner.stop().then(() => { readerDiv.style.display = 'none'; }).catch(() => {});
                 },
                 () => {}
-            ).catch(() => {
-                statusQr.innerText = "❌ Permissão negada ou câmera indisponível. Suba o arquivo por imagem.";
+            ).catch((err) => {
+                statusQr.innerHTML = "⚠️ Câmera integrada falhou (Provável falta de HTTPS). <br><strong>Use a opção de cima 'Tirar Foto do QR' que funciona em qualquer celular!</strong>";
+                statusQr.style.color = "#ea580c";
             });
         }
 
-        // SCANNER DE QR CODE - VIA FOTO / ARQUIVO
+        // NOVO MOTOR: COMPACTA FOTO DO CELULAR E DECODIFICA SEM TRAVAR O NAVEGADOR
         function lerQrDeArquivo(input) {
             const statusQr = document.getElementById('statusQr');
             if (!input.files || input.files.length === 0) return;
 
-            statusQr.innerText = "⏳ Decodificando QR Code...";
-            const html5QrCode = new Html5Qrcode("reader");
-            
-            html5QrCode.scanFile(input.files[0], true)
-                .then(decodedText => processarDadosDoQr(decodedText))
-                .catch(() => {
-                    statusQr.innerText = "❌ QR Code não detectado. Tente focar bem no quadrado preto e branco.";
-                    statusQr.style.color = "#ef4444";
-                });
+            statusQr.innerText = "⏳ Otimizando imagem pesada do celular e escaneando...";
+            statusQr.style.color = "#0ea5e9";
+
+            const arquivo = input.files[0];
+            const leitor = new FileReader();
+
+            leitor.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Cria canvas para redimensionar a imagem antes de decodificar
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Força a imagem gigante do celular a ter no máximo 800px (ideal para ler QR veloz)
+                    const maxDim = 800;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > h && w > maxDim) { h = (h * maxDim) / w; w = maxDim; }
+                    else if (h > maxDim) { w = (w * maxDim) / h; h = maxDim; }
+                    
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    // Converte para blob leve e manda para a biblioteca decodificar
+                    canvas.toBlob((blob) => {
+                        const arquivoOtimizado = new File([blob], "qrcode.jpg", { type: "image/jpeg" });
+                        const html5QrCode = new Html5Qrcode("reader");
+                        
+                        html5QrCode.scanFile(arquivoOtimizado, true)
+                            .then(decodedText => {
+                                processarDadosDoQr(decodedText);
+                            })
+                            .catch(() => {
+                                statusQr.innerText = "❌ QR Code não detectado na foto. Chegue mais perto do quadrado e evite reflexos de luz.";
+                                statusQr.style.color = "#ef4444";
+                            });
+                    }, 'image/jpeg', 0.85);
+                };
+                img.src = e.target.result;
+            };
+            leitor.readAsDataURL(arquivo);
         }
 
-        // SEPARADOR DE DADOS DO QR CODE DA SEFAZ
+        // PARSER DO LINK DA NOTA FISCAL (SEFAZ)
         function processarDadosDoQr(linkCompleto) {
             const statusQr = document.getElementById('statusQr');
             document.getElementById('pdvProduto').value = "Cupom Fiscal via QR: " + linkCompleto.substring(0, 40) + "...";
@@ -348,7 +385,7 @@
             }
 
             document.getElementById('pdvValor').value = valorAchado;
-            statusQr.innerText = "✅ QR Code processado e valor integrado!";
+            statusQr.innerText = "✅ QR Code lido e processado perfeitamente!";
             statusQr.style.color = "#22c55e";
         }
 
@@ -475,7 +512,7 @@
                 liberarCamposCliente(true);
                 pdvContainerPets.innerHTML = '';
                 document.getElementById('statusQr').innerText = "Aponte a câmera para o QR Code da nota fiscal ou envie uma foto dele.";
-                document.getElementById('statusQr').style.color = "#64748b";
+                document.getElementById('statusQr').style.color = "#475569";
                 await carregarDadosGlobais();
                 mudarAba('painel');
             }
