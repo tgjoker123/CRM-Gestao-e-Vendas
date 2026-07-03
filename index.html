@@ -165,7 +165,7 @@
                             <button type="button" onclick="iniciarCameraAoVivo()" style="background: #1e293b; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">🎥 Abrir Câmera no Site</button>
                         </div>
                         <div id="reader"></div>
-                        <small id="statusQr" style="color: #475569; display: block; margin-top: 8px; font-weight: 500;">Dica: Clique em "Tirar Foto do QR", aponte bem de perto e dispare. O sistema processará o arquivo reduzindo o peso automaticamente.</small>
+                        <small id="statusQr" style="color: #475569; display: block; margin-top: 8px; font-weight: 500;">Dica: Prefira clicar em "Tirar Foto do QR" focado bem de perto no quadrado, sem pegar reflexos de luz.</small>
                     </div>
 
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
@@ -298,11 +298,11 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // NOVO MOTOR: INTEGRAÇÃO CAMERA AO VIVO (EXIGE HTTPS NO SERVIDOR)
+        // LEITURA AO VIVO VIA CÂMERA
         function iniciarCameraAoVivo() {
             const statusQr = document.getElementById('statusQr');
             const readerDiv = document.getElementById('reader');
-            statusQr.innerText = "🎥 Tentando inicializar stream da câmera...";
+            statusQr.innerText = "🎥 Inicializando câmera...";
             readerDiv.style.display = 'block';
             
             html5QrcodeScanner = new Html5Qrcode("reader");
@@ -314,18 +314,18 @@
                     html5QrcodeScanner.stop().then(() => { readerDiv.style.display = 'none'; }).catch(() => {});
                 },
                 () => {}
-            ).catch((err) => {
-                statusQr.innerHTML = "⚠️ Câmera integrada falhou (Provável falta de HTTPS). <br><strong>Use a opção de cima 'Tirar Foto do QR' que funciona em qualquer celular!</strong>";
+            ).catch(() => {
+                statusQr.innerHTML = "⚠️ Câmera falhou (Falta HTTPS no site). <br><strong>Use o botão 'Tirar Foto do QR' acima que funciona sempre!</strong>";
                 statusQr.style.color = "#ea580c";
             });
         }
 
-        // NOVO MOTOR: COMPACTA FOTO DO CELULAR E DECODIFICA SEM TRAVAR O NAVEGADOR
+        // COMPACTA IMAGEM E PARSEIA O QR CODE
         function lerQrDeArquivo(input) {
             const statusQr = document.getElementById('statusQr');
             if (!input.files || input.files.length === 0) return;
 
-            statusQr.innerText = "⏳ Otimizando imagem pesada do celular e escaneando...";
+            statusQr.innerText = "⏳ Decodificando e limpando imagem...";
             statusQr.style.color = "#0ea5e9";
 
             const arquivo = input.files[0];
@@ -334,32 +334,25 @@
             leitor.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // Cria canvas para redimensionar a imagem antes de decodificar
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    
-                    // Força a imagem gigante do celular a ter no máximo 800px (ideal para ler QR veloz)
                     const maxDim = 800;
-                    let w = img.width;
-                    let h = img.height;
+                    let w = img.width, h = img.height;
+                    
                     if (w > h && w > maxDim) { h = (h * maxDim) / w; w = maxDim; }
                     else if (h > maxDim) { w = (w * maxDim) / h; h = maxDim; }
                     
-                    canvas.width = w;
-                    canvas.height = h;
+                    canvas.width = w; canvas.height = h;
                     ctx.drawImage(img, 0, 0, w, h);
 
-                    // Converte para blob leve e manda para a biblioteca decodificar
                     canvas.toBlob((blob) => {
                         const arquivoOtimizado = new File([blob], "qrcode.jpg", { type: "image/jpeg" });
                         const html5QrCode = new Html5Qrcode("reader");
                         
                         html5QrCode.scanFile(arquivoOtimizado, true)
-                            .then(decodedText => {
-                                processarDadosDoQr(decodedText);
-                            })
+                            .then(decodedText => processarDadosDoQr(decodedText))
                             .catch(() => {
-                                statusQr.innerText = "❌ QR Code não detectado na foto. Chegue mais perto do quadrado e evite reflexos de luz.";
+                                statusQr.innerText = "❌ QR Code não localizado na foto. Centralize bem o quadrado preto e branco e tire outra foto.";
                                 statusQr.style.color = "#ef4444";
                             });
                     }, 'image/jpeg', 0.85);
@@ -369,24 +362,45 @@
             leitor.readAsDataURL(arquivo);
         }
 
-        // PARSER DO LINK DA NOTA FISCAL (SEFAZ)
+        // NOVO MOTOR EXTRACTOR UNIVERSAL DE VALORES DO QR CODE
         function processarDadosDoQr(linkCompleto) {
             const statusQr = document.getElementById('statusQr');
-            document.getElementById('pdvProduto').value = "Cupom Fiscal via QR: " + linkCompleto.substring(0, 40) + "...";
+            document.getElementById('pdvProduto').value = "Nota Fiscal: " + linkCompleto.substring(0, 35) + "...";
             
-            let valorAchado = "0.00";
-            const regexValor = /(?:vNf|vQrCol|vTotal)=([0-9.]+)/i;
-            const match = linkCompleto.match(regexValor);
+            let valorEncontrado = "";
             
-            if (match && match[1]) {
-                valorAchado = match[1];
-            } else {
-                valorAchado = (Math.random() * 60 + 15).toFixed(2);
+            try {
+                // Tenta mapear o link como uma URL real para caçar qualquer parâmetro que comece com "v" (vNf, vQrCol, vTotal, valor)
+                const urlObj = new URL(linkCompleto);
+                const params = new URLSearchParams(urlObj.search);
+                
+                for (let [key, val] of params.entries()) {
+                    const keyLower = key.toLowerCase();
+                    if (keyLower === 'vnf' || keyLower === 'vqrcol' || keyLower === 'vtotal' || keyLower === 'valor') {
+                        valorEncontrado = val;
+                        break;
+                    }
+                }
+            } catch (e) {
+                // Fallback de Regex caso o QR Code não use estrutura padrão de URL (Ex: Texto puro formatado)
+                const regexFallback = /(?:vNf|vQrCol|vTotal|valor)=([0-9.]+)/i;
+                const match = linkCompleto.match(regexFallback);
+                if (match && match[1]) {
+                    valorEncontrado = match[1];
+                }
             }
 
-            document.getElementById('pdvValor').value = valorAchado;
-            statusQr.innerText = "✅ QR Code lido e processado perfeitamente!";
-            statusQr.style.color = "#22c55e";
+            if (valorEncontrado && !isNaN(parseFloat(valorEncontrado)) && parseFloat(valorEncontrado) > 0) {
+                document.getElementById('pdvValor').value = parseFloat(valorEncontrado).toFixed(2);
+                statusQr.innerText = "✅ QR Code processado e valor integrado com sucesso!";
+                statusQr.style.color = "#22c55e";
+            } else {
+                // Se a SEFAZ estadual for bizarra e omitir o valor na URL, deixa em branco pro cara digitar e não chuta valor aleatório
+                document.getElementById('pdvValor').value = "";
+                document.getElementById('pdvValor').placeholder = "Insira o valor manualmente";
+                statusQr.innerText = "⚠️ Link lido, mas seu estado não publica o valor na URL. Por favor, digite o valor da nota abaixo.";
+                statusQr.style.color = "#ea580c";
+            }
         }
 
         // LOGICA DE BUSCA DE CLIENTES
@@ -475,6 +489,11 @@
             const valorVal = parseFloat(document.getElementById('pdvValor').value);
             let idFinalCliente = clienteSelecionadoId;
 
+            if (isNaN(valorVal) || valorVal <= 0) {
+                alert("Por favor, preencha um valor válido para a venda.");
+                return;
+            }
+
             if (!idFinalCliente) {
                 const nomeVal = document.getElementById('pdvNome').value.trim();
                 const cpfVal = document.getElementById('pdvCpf').value.trim();
@@ -507,7 +526,7 @@
             if (errV) { 
                 alert("Erro ao computar venda: " + errV.message); 
             } else {
-                alert("✅ Venda integrada e salva com sucesso!");
+                alert("✅ Venda catalogada com sucesso!");
                 vendaForm.reset();
                 liberarCamposCliente(true);
                 pdvContainerPets.innerHTML = '';
