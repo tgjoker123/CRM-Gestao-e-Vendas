@@ -66,7 +66,7 @@
         .btn-submit { background-color: #0ea5e9; color: white; border: none; padding: 14px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; font-size: 15px; transition: background 0.2s; }
         .btn-submit:hover { background-color: #0284c7; }
 
-        /* Tables & Responsividade da tabela */
+        /* Tables */
         .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 500px; }
         th, td { padding: 12px 15px; }
@@ -75,7 +75,7 @@
         .empty-row { text-align: center; color: #94a3b8; padding: 30px; }
 
         /* Scanner Box */
-        #reader { width: 100%; max-width: 450px; background: #fafafa; border: 1px dashed #0ea5e9; border-radius: 8px; margin: 10px auto 0 auto; display: none; }
+        #reader { width: 100%; max-width: 450px; background: #fafafa; border: 1px dashed #0ea5e9; border-radius: 8px; margin: 10px auto 0 auto; display: none; min-height: 200px; }
 
         /* Modais */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
@@ -158,14 +158,14 @@
                 <form id="vendaForm" action="javascript:void(0);">
                     
                     <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #0ea5e9; margin-bottom: 20px;">
-                        <label style="color: #0369a1; font-weight: bold;">📷 Motor de Leitura do QR Code</label>
+                        <label style="color: #0369a1; font-weight: bold;">📷 Importar Cupom / QR Code</label>
                         <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
                             <input type="file" id="qrArquivo" accept="image/*" capture="environment" onchange="lerQrDeArquivo(this)" style="display: none;">
-                            <button type="button" onclick="document.getElementById('qrArquivo').click()" style="background: #0ea5e9; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">📸 Tirar Foto do QR</button>
-                            <button type="button" onclick="iniciarCameraAoVivo()" style="background: #1e293b; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">🎥 Abrir Câmera no Site</button>
+                            <button type="button" onclick="document.getElementById('qrArquivo').click()" style="background: #0ea5e9; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">📸 Tirar Foto da Nota (Recomendado)</button>
+                            <button type="button" onclick="iniciarCameraAoVivo()" style="background: #1e293b; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; flex: 1; min-width: 140px;">🎥 Ativar Câmera Direta</button>
                         </div>
                         <div id="reader"></div>
-                        <small id="statusQr" style="color: #475569; display: block; margin-top: 8px; font-weight: 500;">Dica: Prefira clicar em "Tirar Foto do QR" focado bem de perto no quadrado, sem pegar reflexos de luz.</small>
+                        <small id="statusQr" style="color: #475569; display: block; margin-top: 8px; font-weight: 500;">Dica: Tire uma foto focando bem de perto e centralizado no QR Code para evitar falhas.</small>
                     </div>
 
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
@@ -196,7 +196,7 @@
                         <h3 style="font-size: 15px; color: #0f172a; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; padding-bottom: 5px;">🛒 Itens e Valores</h3>
                         <div class="form-group">
                             <label for="pdvProduto">Produto / Descrição do QR Code</label>
-                            <input type="text" id="pdvProduto" placeholder="Aguardando leitura do QR Code..." required>
+                            <input type="text" id="pdvProduto" placeholder="Aguardando leitura ou digite o produto..." required>
                         </div>
                         <div class="form-group">
                             <label for="pdvValor">Valor Total da Venda (R$)</label>
@@ -291,41 +291,52 @@
             const titulos = { painel: "📊 Painel Geral", pdv: "🛒 PDV - Registrar Venda", relatorios: "📈 Histórico & Relatórios", config: "⚙️ Configurações CRM" };
             document.getElementById('page-title').innerText = titulos[idAba];
             
-            if (html5QrcodeScanner) {
-                document.getElementById('reader').style.display = 'none';
-                html5QrcodeScanner.stop().catch(() => {});
-            }
+            fecharCamera();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // LEITURA AO VIVO VIA CÂMERA
+        function fecharCamera() {
+            if (html5QrcodeScanner) {
+                try {
+                    html5QrcodeScanner.stop().catch(()=>{});
+                } catch(e){}
+                html5QrcodeScanner = null;
+            }
+            document.getElementById('reader').style.display = 'none';
+        }
+
+        // TENTA ABRIR CÂMERA INTEGRADA COM TRATAMENTO DE ERROS BRUTAL
         function iniciarCameraAoVivo() {
             const statusQr = document.getElementById('statusQr');
             const readerDiv = document.getElementById('reader');
-            statusQr.innerText = "🎥 Inicializando câmera...";
+            fecharCamera();
+            
+            statusQr.innerText = "🎥 Solicitando acesso à câmera...";
+            statusQr.style.color = "#0ea5e9";
             readerDiv.style.display = 'block';
             
             html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start(
                 { facingMode: "environment" },
-                { fps: 15, qrbox: { width: 260, height: 260 } },
+                { fps: 10, qrbox: 250 },
                 (decodedText) => {
                     processarDadosDoQr(decodedText);
-                    html5QrcodeScanner.stop().then(() => { readerDiv.style.display = 'none'; }).catch(() => {});
+                    fecharCamera();
                 },
-                () => {}
-            ).catch(() => {
-                statusQr.innerHTML = "⚠️ Câmera falhou (Falta HTTPS no site). <br><strong>Use o botão 'Tirar Foto do QR' acima que funciona sempre!</strong>";
+                () => {} // Ignora erros de frame
+            ).catch((err) => {
+                fecharCamera();
+                statusQr.innerHTML = "⚠️ Câmera bloqueada ou sem HTTPS. Use o botão <strong>'Tirar Foto da Nota'</strong>, ele funciona em qualquer celular!";
                 statusQr.style.color = "#ea580c";
             });
         }
 
-        // COMPACTA IMAGEM E PARSEIA O QR CODE
+        // COMPACTA, REDUZ E PROCESSA O ARQUIVO DE IMAGEM DO CELULAR
         function lerQrDeArquivo(input) {
             const statusQr = document.getElementById('statusQr');
             if (!input.files || input.files.length === 0) return;
 
-            statusQr.innerText = "⏳ Decodificando e limpando imagem...";
+            statusQr.innerText = "⏳ Reduzindo tamanho da foto e escaneando...";
             statusQr.style.color = "#0ea5e9";
 
             const arquivo = input.files[0];
@@ -336,9 +347,10 @@
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
+                    
+                    // Comprime fotos gigantes para evitar que o navegador trave
                     const maxDim = 800;
                     let w = img.width, h = img.height;
-                    
                     if (w > h && w > maxDim) { h = (h * maxDim) / w; w = maxDim; }
                     else if (h > maxDim) { w = (w * maxDim) / h; h = maxDim; }
                     
@@ -346,64 +358,70 @@
                     ctx.drawImage(img, 0, 0, w, h);
 
                     canvas.toBlob((blob) => {
-                        const arquivoOtimizado = new File([blob], "qrcode.jpg", { type: "image/jpeg" });
+                        const arquivoOtimizado = new File([blob], "qr.jpg", { type: "image/jpeg" });
                         const html5QrCode = new Html5Qrcode("reader");
                         
                         html5QrCode.scanFile(arquivoOtimizado, true)
-                            .then(decodedText => processarDadosDoQr(decodedText))
+                            .then(decodedText => {
+                                processarDadosDoQr(decodedText);
+                            })
                             .catch(() => {
-                                statusQr.innerText = "❌ QR Code não localizado na foto. Centralize bem o quadrado preto e branco e tire outra foto.";
+                                statusQr.innerText = "❌ QR Code não encontrado na foto. Aproxime mais a câmera do quadrado e evite sombras ou reflexos.";
                                 statusQr.style.color = "#ef4444";
                             });
-                    }, 'image/jpeg', 0.85);
+                    }, 'image/jpeg', 0.80);
                 };
                 img.src = e.target.result;
             };
             leitor.readAsDataURL(arquivo);
         }
 
-        // NOVO MOTOR EXTRACTOR UNIVERSAL DE VALORES DO QR CODE
+        // LEITOR UNIVERSAL INTELIGENTE
         function processarDadosDoQr(linkCompleto) {
             const statusQr = document.getElementById('statusQr');
-            document.getElementById('pdvProduto').value = "Nota Fiscal: " + linkCompleto.substring(0, 35) + "...";
+            document.getElementById('pdvProduto').value = "Nota Fiscal via QR Code";
             
             let valorEncontrado = "";
             
+            // Procura de forma agressiva por chaves conhecidas de notas fiscais nas URLs da SEFAZ
+            const chavesValores = ['vnf', 'vqrcol', 'vtotal', 'valor', 'vNF'];
+            
             try {
-                // Tenta mapear o link como uma URL real para caçar qualquer parâmetro que comece com "v" (vNf, vQrCol, vTotal, valor)
                 const urlObj = new URL(linkCompleto);
                 const params = new URLSearchParams(urlObj.search);
-                
-                for (let [key, val] of params.entries()) {
-                    const keyLower = key.toLowerCase();
-                    if (keyLower === 'vnf' || keyLower === 'vqrcol' || keyLower === 'vtotal' || keyLower === 'valor') {
-                        valorEncontrado = val;
+                for (let chave of chavesValores) {
+                    if (params.has(chave)) {
+                        valorEncontrado = params.get(chave);
                         break;
                     }
                 }
             } catch (e) {
-                // Fallback de Regex caso o QR Code não use estrutura padrão de URL (Ex: Texto puro formatado)
-                const regexFallback = /(?:vNf|vQrCol|vTotal|valor)=([0-9.]+)/i;
-                const match = linkCompleto.match(regexFallback);
-                if (match && match[1]) {
-                    valorEncontrado = match[1];
+                // Caso não seja uma URL perfeitamente estruturada, usa Regex amplo
+                for (let chave of chavesValores) {
+                    const regex = new RegExp(`[?&]${chave}=([0-9.]+)`, 'i');
+                    const match = linkCompleto.match(regex);
+                    if (match && match[1]) {
+                        valorEncontrado = match[1];
+                        break;
+                    }
                 }
             }
 
+            // Valida o valor extraído
             if (valorEncontrado && !isNaN(parseFloat(valorEncontrado)) && parseFloat(valorEncontrado) > 0) {
                 document.getElementById('pdvValor').value = parseFloat(valorEncontrado).toFixed(2);
-                statusQr.innerText = "✅ QR Code processado e valor integrado com sucesso!";
+                statusQr.innerText = "✅ QR Code processado e valor puxado com sucesso!";
                 statusQr.style.color = "#22c55e";
             } else {
-                // Se a SEFAZ estadual for bizarra e omitir o valor na URL, deixa em branco pro cara digitar e não chuta valor aleatório
+                // Deixa livre e limpo pro usuário preencher se a SEFAZ ocultar o dado na URL
                 document.getElementById('pdvValor').value = "";
-                document.getElementById('pdvValor').placeholder = "Insira o valor manualmente";
-                statusQr.innerText = "⚠️ Link lido, mas seu estado não publica o valor na URL. Por favor, digite o valor da nota abaixo.";
+                document.getElementById('pdvValor').placeholder = "0.00";
+                statusQr.innerText = "⚠️ Nota lida! Mas seu estado oculta o preço na URL. Insira o valor manualmente abaixo.";
                 statusQr.style.color = "#ea580c";
             }
         }
 
-        // LOGICA DE BUSCA DE CLIENTES
+        // PROCURAR CLIENTES
         pdvBuscaCliente.addEventListener('input', () => {
             const termo = pdvBuscaCliente.value.trim().toLowerCase();
             if (termo.length < 2) {
@@ -524,13 +542,13 @@
             }]);
 
             if (errV) { 
-                alert("Erro ao computar venda: " + errV.message); 
+                alert("Erro ao salvar venda: " + errV.message); 
             } else {
-                alert("✅ Venda catalogada com sucesso!");
+                alert("✅ Venda salva com sucesso!");
                 vendaForm.reset();
                 liberarCamposCliente(true);
                 pdvContainerPets.innerHTML = '';
-                document.getElementById('statusQr').innerText = "Aponte a câmera para o QR Code da nota fiscal ou envie uma foto dele.";
+                document.getElementById('statusQr').innerText = "Tire uma foto focando bem de perto e centralizado no QR Code para evitar falhas.";
                 document.getElementById('statusQr').style.color = "#475569";
                 await carregarDadosGlobais();
                 mudarAba('painel');
